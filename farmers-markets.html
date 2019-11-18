@@ -55,7 +55,6 @@
               <th scope="col">#</th>
               <th scope="col">Name</th>
               <th scope="col">Address</th>
-              <th scope="col">Open</th>
               <th scope="col">Payments Accepted</th>
             </tr>
           </thead>
@@ -70,13 +69,8 @@
                 </div>
               </td>
               <td>
-                {{market.properties.MONTHS}}<br>
-                {{market.properties.DAY}}<br>
-                {{market.properties.TIME}}
-              </td>
-              <td>
-                <ul v-if="getPaymentsAccepted(market)">
-                  <li v-for="payment in getPaymentsAccepted(market)">
+                <ul v-if="paymentsAccepted(market)">
+                  <li v-for="payment in paymentsAccepted(market)">
                     <span v-html="payment"></span>
                   </li>
                 </ul>
@@ -131,7 +125,7 @@
           }
           this.map.fitBounds(this.mapMarkersGroup.getBounds().pad(0.25));
         },
-        getPaymentsAccepted(market) {
+        paymentsAccepted: function(market) {
           var payments = [];
           if (market.properties.ACCEPT_FMNP === 'Y') {
             payments.push('<a href="https://www.fns.usda.gov/fmnp/wic-farmers-market-nutrition-program" target="_blank">Farmers Market Nutrition Program</a>');
@@ -143,6 +137,9 @@
             payments.push('<a href="https://www.fns.usda.gov/snap/supplemental-nutrition-assistance-program" target="_blank">Supplemental Nutrition Assistance Program (SNAP)</a>');
           }
           return payments;
+        },
+        openTimes: function(market) {
+          return market.properties.MONTHS + '<br>' + market.properties.DAY + '<br>' + market.properties.TIME;
         },
         getNeighborhoods: function() {
           return [...new Set(markets.features.map(market => titleCase(market.properties.NEIGHBORHOOD.trim())))];
