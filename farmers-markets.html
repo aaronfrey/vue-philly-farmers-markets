@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>Philadelphia Farmer's Markets</title>
+  <meta name="description" content="Listing of Farmer's Markets in Philadelphia">
+  <meta name="author" content="Aaron Frey">
+
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
+    crossorigin="anonymous">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css"
+    integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+    crossorigin="">
+
+  <style>
+    [v-cloak] {
+      display: none;
+    }
+    #map {
+      height: 360px;
+    }
+  </style>
+
+</head>
+
+<body>
+
+  <div id="app">
+    <div class="container">
+
+      <div class="card mt-5 mb-5">
+
+        <h1 class="card-header">Philadelphia Farmer's Markets</h1>
+        <div id="map"></div>
+
+        <div class="row">
+          <div class="col-5">
+            <div class="form-group m-3" v-cloak>
+              <label for="neighborhoods">Neighborhood</label>
+              <select name="neighborhoods" id="neighborhoods" class="form-control" @change="getMarketByNeighborhood($event)">
+                <option value="all" selected>All Neighborhoods</option>
+                <option v-for="n in getNeighborhoods()" :value="n">{{n}}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">Name</th>
+              <th scope="col">Address</th>
+              <th scope="col">Open</th>
+              <th scope="col">Payments Accepted</th>
+            </tr>
+          </thead>
+          <tbody v-cloak>
+            <tr v-for="(market, index) in markets" :key="market.properties.OBJECTID">
+              <th scope="row">{{index + 1}}</th>
+              <td>{{market.properties.NAME}}</td>
+              <td>
+                {{market.properties.ADDRESS}}
+                <div v-if="market.properties.ADDRESS_NOTES">
+                  (<small>{{market.properties.ADDRESS_NOTES}}</small>)
+                </div>
+              </td>
+              <td>
+                {{market.properties.MONTHS}}<br>
+                {{market.properties.DAY}}<br>
+                {{market.properties.TIME}}
+              </td>
+              <td>
+                <ul v-if="getPaymentsAccepted(market)">
+                  <li v-for="payment in getPaymentsAccepted(market)">
+                    <span v-html="payment"></span>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  <script src="assets/farmers-markets.geojson"></script>
+  <script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"
+    integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og=="
+    crossorigin=""></script>
+
+  <script>
+
+    const titleCase = (title) => {
+      const str = title.split(' ');
+      return str.map( word => word[0].toUpperCase() + word.substr(1)).join(' ');
+    }
+
+    var vm = new Vue({
+      el: "#app",
+      data: {
+        mapboxAccessToken: 'pk.eyJ1IjoiYWFyb25mcmV5IiwiYSI6ImNrMzI5OHcwZDBhMGYzY29xM2VleHpnbmcifQ.4_SMcBf9Okst7qtFHZNzbw',
+        map: null,
+        mapMarkersGroup: L.featureGroup(),
+        markets: markets.features,
+      },
+      mounted: function() {
+
+        this.map = L.map('map').setView([39.952397, -75.163645], 13);
+
+        L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+          attribution: '',
+          maxZoom: 18,
+          id: 'mapbox.streets',
+          accessToken: this.mapboxAccessToken,
+        }).addTo(this.map);
+
+        this.mapMarkersGroup.addTo(this.map);
+        this.addMapMarkers();
+      },
+      methods: {
+        addMapMarkers: function() {
+          this.mapMarkersGroup.clearLayers();
+          for (var i = 0; i < this.markets.length; i++) {
+            this.mapMarkersGroup.addLayer(L.marker([this.markets[i].geometry.coordinates[1], this.markets[i].geometry.coordinates[0]]));
+          }
+          this.map.fitBounds(this.mapMarkersGroup.getBounds().pad(0.25));
+        },
+        getPaymentsAccepted(market) {
+          var payments = [];
+          if (market.properties.ACCEPT_FMNP === 'Y') {
+            payments.push('<a href="https://www.fns.usda.gov/fmnp/wic-farmers-market-nutrition-program" target="_blank">Farmers Market Nutrition Program</a>');
+          }
+          if (market.properties.ACCEPT_PHILLY_FOOD_BUCKS_ === 'Y') {
+            payments.push('<a href="http://thefoodtrust.org/what-we-do/foodbucks" target="_blank">Philly Food Bucks</a>');
+          }
+          if (market.properties.ACCEPT_SNAP_ACCESS === 'Y') {
+            payments.push('<a href="https://www.fns.usda.gov/snap/supplemental-nutrition-assistance-program" target="_blank">Supplemental Nutrition Assistance Program (SNAP)</a>');
+          }
+          return payments;
+        },
+        getNeighborhoods: function() {
+          return [...new Set(markets.features.map(market => titleCase(market.properties.NEIGHBORHOOD.trim())))];
+        },
+        getMarketByNeighborhood: function(event) {
+          var neighborhood = event.target.value;
+          if (neighborhood === 'all') {
+            this.markets = markets.features;
+          } else {
+            this.markets = markets.features.filter(function (market) {
+              return titleCase(market.properties.NEIGHBORHOOD.trim()) === neighborhood;
+            });
+          }
+          this.addMapMarkers();
+        }
+      }
+    });
+  </script>
+  
+</body>
+</html>
