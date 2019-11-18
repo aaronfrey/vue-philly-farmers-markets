@@ -121,7 +121,9 @@
         addMapMarkers: function() {
           this.mapMarkersGroup.clearLayers();
           for (var i = 0; i < this.markets.length; i++) {
-            this.mapMarkersGroup.addLayer(L.marker([this.markets[i].geometry.coordinates[1], this.markets[i].geometry.coordinates[0]]));
+            var marker = L.marker([this.markets[i].geometry.coordinates[1], this.markets[i].geometry.coordinates[0]]);
+            marker.bindPopup('<b>' + this.markets[i].properties.NAME + '</b><br>' + this.openTimes(this.markets[i]));
+            this.mapMarkersGroup.addLayer(marker);
           }
           this.map.fitBounds(this.mapMarkersGroup.getBounds().pad(0.25));
         },
